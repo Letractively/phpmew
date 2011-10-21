@@ -1,0 +1,5 @@
+<IfModule rewrite_module>
+	RewriteEngine On
+	RewriteBase /~UserID/Public/
+	RewriteRule !\.(html|js|ico|gif|jpg|JPG|png|css|swf)$ index.php
+</IfModule>

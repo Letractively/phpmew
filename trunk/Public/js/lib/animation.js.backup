@@ -1,0 +1,274 @@
+
+/*
+
+ */
+
+Library.loadAction();
+Library.loadUtils();
+
+function Fadeable()
+{
+	this.id          = 0;
+	this.element     = null;
+	this.interval    = 100;
+	this.step        = 0.1;
+	this.original    = 1;
+	this.destination = 0;
+
+	this.init = function() {
+		if ( this.element.style.opacity )
+		{
+			this.original = this.element.style.opacity;
+		}
+		else
+		{
+			this.original = 1.0;
+			Action.opaque( this.element, this.original );
+		}
+	}
+	this.run = function() {
+		if ( this.original == this.destination )
+		{
+			return;
+		}
+
+		if ( this.element.style.opacity != this.destination )
+		{
+			currentOpacity = this.element.style.opacity;
+
+			if ( this.original > this.destination )
+			{
+				currentOpacity -= this.step;
+
+				if ( currentOpacity < this.destination )
+				{
+					currentOpacity = this.destination;
+				}
+			}
+			else if ( this.original < this.destination )
+			{
+				currentOpacity += this.step;
+
+				if ( currentOpacity > this.destination )
+				{
+					currentOpacity = this.destination;
+				}
+			}
+
+			Action.opaque( this.element, currentOpacity );
+			setTimeout(
+				'Animation.Fade.objects[' + this.id + '].run()',
+				this.interval
+			);
+		}
+		else
+		{
+			this.onfinish();
+		}
+	}
+	this.onfinish = function() {};
+	this.reset = function() {
+		Animation.Fade.reset( this.id );
+	}
+}
+
+function Movable()
+{
+	this.id          = 0;
+	this.element     = null;
+	this.interval    = 50;
+	this.step_x      = 3;
+	this.step_y      = 3;
+	this.position    = 'static';
+	this.destination = { x: 0, y: 0 };
+	this.original    = { x: 0, y: 0 };
+
+	this.init = function() {
+		this.position   = this.element.style.position;
+		this.original.x = this.element.offsetLeft;
+		this.original.y = this.element.offsetTop;
+	}
+	this.move = function() {
+		pos = Utils.getElementPosition( this.element );
+
+		if ( pos.x + this.step_x >= this.destination.x )
+			next_x = this.destination.x;
+		else
+			next_x = pos.x + this.step_x;
+
+		if ( pos.y + this.step_y >=  this.destination.y )
+			next_y = this.destination.y;
+		else
+			next_y = pos.y + this.step_y;
+
+		Action.moveTo( this.element, next_x, next_y );
+	}
+	this.run = function() {
+		pos = Utils.getElementPosition( this.element );
+
+		if ( pos.x != this.destination.x || pos.y != this.destination.y )
+		{
+			this.move();
+			setTimeout(
+				'Animation.Move.objects[' + this.id + '].run()',
+				this.interval
+			);
+		}
+		else
+		{
+			this.onfinish();
+		}
+	}
+	this.onfinish = function() {};
+	this.reset = function() {
+		Animation.Move.reset( this.id );
+	}
+}
+
+function Resizable()
+{
+	this.id         = 0;
+	this.element    = null;
+	this.interval   = 50;
+	this.step       = 2;
+	this.keepRatio  = true;
+	this.original   = {
+		width: 0,
+		height: 0
+	};
+	this.destination = {
+		width: 0,
+		height: 0
+	};
+
+	this.init = function() {
+		this.original.width  = this.element.width;
+		this.original.height = this.element.height;
+	}
+	this.run = function() {
+		width  = this.element.width;
+		height = this.element.height;
+
+		if ( this.element.width == this.destination.width
+			&& this.element.height == this.destination.height )
+		{
+			this.onfinish();
+		}
+		else
+		{
+			newWidth  = width;
+			newHeight = height;
+
+			if ( width < this.destination.width )
+			{
+				newWidth += this.step;
+			}
+			else if ( width > this.destination.width )
+			{
+				newWidth -= this.step;
+			}
+
+			if ( height < this.destination.height )
+			{
+				newHeight += this.step;
+			}
+			else if ( height > this.destination.height )
+			{
+				newHeight -= this.step;
+			}
+
+			if ( ( this.destination.width > this.original.width && newWidth > this.destination.width )
+			|| ( this.destination.width < this.original.width && newWidth < this.destination.width ) )
+			{
+				newWidth = this.destination.width;
+			}
+
+			if ( ( this.destination.height > this.original.height && newHeight > this.destination.height )
+			|| ( this.destination.height < this.original.height && newHeight < this.destination.height ) )
+			{
+				newHeight = this.destination.height;
+			}
+
+			if ( this.keepRatio )
+			{
+				maxWidth  = newWidth;
+				maxHeight = newHeight;
+				size      = Utils.getResizeSize( width, height, maxWidth, maxHeight );
+				newWidth  = size.width;
+				newHeight = size.height;
+			}
+
+			Action.resize( this.element, newWidth, newHeight );
+
+			if ( this.keepRatio && maxWidth == this.destination.width && maxHeight == this.destination.height )
+			{
+				this.onfinish();
+				return;
+			}
+
+			setTimeout(
+				'Animation.Resize.objects[' + this.id + '].run()',
+				this.interval
+			);
+		}
+	}
+	this.onfinish = function() {};
+	this.reset = function() {
+		Animation.Resize.reset( this.id );
+	}
+}
+
+var Animation = {
+	Fade: {
+		objects: [],
+		create: function( fadeable ) {
+			fadeable.id = this.objects.length;
+			fadeable.init();
+			this.objects.push( fadeable );
+			this.objects[ fadeable.id ].run();
+		},
+		reset: function( id ) {
+			obj = this.objects[ id ];
+			Action.opaque( obj.element, obj.original );
+		}
+	},
+	Move: {
+		objects: [],
+		create: function( movable ) {
+			movable.id = this.objects.length;
+			movable.init();
+			this.objects.push( movable );
+			this.objects[ movable.id ].run();
+		},
+		reset: function( id ) {
+			element = this.objects[ id ].element;
+			element.style.position = this.objects[ id ].position;
+			element.style.left     = this.objects[ id ].original.x + 'px';
+			element.style.top      = this.objects[ id ].original.y + 'px';
+		}
+	},
+	Resize: {
+		objects: [],
+		create: function( resizable ) {
+			resizable.id = this.objects.length;
+			resizable.init();
+
+			if ( resizable.keepRatio )
+			{
+				size = Utils.getResizeSize(
+					resizable.original.width, resizable.original.height,
+					resizable.destination.width, resizable.destination.height
+				);
+				resizable.destination.width  = size.width;
+				resizable.destination.height = size.height;
+			}
+
+			this.objects.push( resizable );
+			this.objects[ resizable.id ].run();
+		},
+		reset: function( id ) {
+			this.objects[ id ].element.setAttribute( 'width', this.objects[ id ].original.width );
+			this.objects[ id ].element.setAttribute( 'height', this.objects[ id ].original.height );
+		}
+	}
+}

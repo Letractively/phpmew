@@ -1,0 +1,78 @@
+<?php
+
+/* example bootstrap */
+//php environment settings
+error_reporting( E_ALL | E_STRICT );
+//session_cache_limiter( 'nocache' );
+//session_cache_expire( '180' );
+date_default_timezone_set( 'Pacific/Auckland' );
+
+//include PhpMew2 base class
+include_once '../Library/PhpMew2.php';
+
+try
+{
+	//add directory path that the library to load classes from and etc (optional)
+	PhpMew2::addPath( 'public', dirname( __FILE__ ) );
+	PhpMew2::addPath( 'lib',    dirname( __FILE__ ) . '/../Library' );
+	PhpMew2::addPath( 'app',    dirname( __FILE__ ) . '/../Application' );
+	PhpMew2::addPath( 'model',  PhpMew2::getPath( 'app' ) . 'Model' );
+	PhpMew2::addPath( 'view',   PhpMew2::getPath( 'app' ) . 'View' );
+	PhpMew2::addPath( 'temp',   PhpMew2::getPath( 'app' ) . 'Temp' );
+
+	//load Mew classes
+	PhpMew2::load( 'Mew/Controller' );
+	PhpMew2::load( 'Mew/Database' );
+	PhpMew2::load( 'Mew/Dispatcher' );
+	PhpMew2::load( 'Mew/Model/Database' );
+	PhpMew2::load( 'Mew/Process/Mvc' );
+	PhpMew2::load( 'Mew/Request/Uri' );
+
+	//routing configuration
+	$indexSubPages = '(index|about|install|login|logout)';
+	$Router        = PhpMew2::get( 'Mew/Router' );
+	$Router->addRoute( Array(
+		$indexSubPages, Array( 'controller' => 'Main' ), Array( 'action' )
+	));
+	$Router->addRoute( Array(
+		'(\w+)/(\w+)/?(\d+)?', Array(), Array( 'controller', 'action', 'id' )
+	));
+	$Router->addRoute( Array(
+		'(\w+)/?(\d+)?', Array( 'action' => 'Index' ), Array( 'controller', 'id' )
+	));
+
+	//configure adapter and database
+	$Adapter = 'Mew/Adapter/Sqlite';
+	$Option  = PhpMew2::getPath( 'app' ) . 'my.db';
+	Mew_Database::setDefaultAdapter( Mew_Database::factory( $Adapter, $Option ) );
+
+	//action on no controller and no action
+	class NoControllerAction
+	{
+		function run()
+		{
+			include_once PhpMew2::getPath( 'view' ) . 'error.phtml';
+		}
+	}
+
+	$Process = new Mew_Process_Mvc;
+	$Process->onNoController( new NoControllerAction );
+	$Process->onNoAction( new NoControllerAction );
+
+	//set session save path to own temporary directory
+	session_save_path( PhpMew2::getPath( 'app' ) . 'Temp' );
+	session_cache_limiter( 'nocache' );
+	session_cache_expire( '180' );
+
+	//dispatch
+	Mew_Dispatcher::dispatch( $Router->route( Mew_Request_Uri::getRequest() ), $Process );
+}
+catch ( Exception $e )
+{
+	echo '<div>' . $e->getMessage() . '</div>';
+	echo '<pre>';
+	print_r( $e->getTrace() );
+	echo '</pre>';
+}
+
+?>
