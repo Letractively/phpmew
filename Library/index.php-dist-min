@@ -1,0 +1,41 @@
+<?php
+
+/* example bootstrap */
+//php environment settings
+error_reporting( E_ALL | E_STRICT );
+date_default_timezone_set( 'Pacific/Auckland' );
+
+//include PhpMew2 base class
+include_once '../Library/PhpMew2.php';
+include_once '../Library/Default.php';
+
+try
+{
+	//add directory path that the library to load classes from and etc (optional)
+	PhpMew2::addPath( 'public', dirname( __FILE__ ) );
+	PhpMew2::addPath( 'app',    dirname( __FILE__ ) . '/../Application' );
+	PhpMew2::addPath( 'model',  PhpMew2::getPath( 'app' ) . 'Model' );
+	PhpMew2::addPath( 'view',   PhpMew2::getPath( 'app' ) . 'View' );
+	PhpMew2::addPath( 'temp',   PhpMew2::getPath( 'app' ) . 'Temp' );
+
+	//routing configuration
+	$indexSubPages = '(index|about|install|login|logout)';
+	$Router->addRoute( Array( $indexSubPages, Array( 'controller' => 'Main' ), Array( 'action' ) ) );
+
+	//database
+	$Adapter = 'Mew/Adapter/Sqlite';
+	$Option  = PhpMew2::getPath( 'app' ) . 'my.db';
+	Mew_Database::setDefaultAdapter( Mew_Database::factory( $Adapter, $Option ) );
+
+	//dispatch
+	Mew_Dispatcher::dispatch( $Router->route( Mew_Request_Uri::getRequest() ), $Process );
+}
+catch ( Exception $e )
+{
+	echo '<div>' . $e->getMessage() . '</div>';
+	echo '<pre>';
+	print_r( $e->getTrace() );
+	echo '</pre>';
+}
+
+?>
